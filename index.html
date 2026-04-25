@@ -86,11 +86,18 @@
                 return;
             }
 
-            // Получаем platform_id пользователя из Telegram
-            const platformId = tg.initDataUnsafe?.user?.id;
+            // Получаем platform_id из URL-параметра (Salebot передаёт его в ссылке)
+            const urlParams = new URLSearchParams(window.location.search);
+            let platformId = urlParams.get('user_id');
+            
+            // Резерв: пробуем получить из Telegram WebApp (на случай если открыто без параметра)
+            if (!platformId) {
+                platformId = tg.initDataUnsafe?.user?.id;
+            }
+            
             if (!platformId) {
                 status.className = 'error';
-                status.textContent = '❌ Не удалось получить ID пользователя';
+                status.textContent = '❌ Не удалось получить ID пользователя. Открой Mini App через бота.';
                 return;
             }
 
