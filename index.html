@@ -86,20 +86,28 @@
                 return;
             }
 
-            // Получаем platform_id из URL-параметра (Salebot передаёт его в ссылке)
+            // ДИАГНОСТИКА: показываем всё, что мы знаем о пользователе
             const urlParams = new URLSearchParams(window.location.search);
-            let platformId = urlParams.get('user_id');
+            const userIdFromUrl = urlParams.get('user_id');
+            const userIdFromTg = tg.initDataUnsafe?.user?.id;
+            const fullUrl = window.location.href;
+            const initDataRaw = tg.initData || '(пусто)';
+            const initDataUnsafeStr = JSON.stringify(tg.initDataUnsafe || {}, null, 2);
             
-            // Резерв: пробуем получить из Telegram WebApp (на случай если открыто без параметра)
-            if (!platformId) {
-                platformId = tg.initDataUnsafe?.user?.id;
-            }
+            const debugInfo = 
+                'URL: ' + fullUrl + '\n\n' +
+                'user_id из URL: ' + (userIdFromUrl || '(не найден)') + '\n\n' +
+                'user.id из Telegram: ' + (userIdFromTg || '(не найден)') + '\n\n' +
+                'initData (сырой): ' + initDataRaw + '\n\n' +
+                'initDataUnsafe: ' + initDataUnsafeStr;
             
-            if (!platformId) {
-                status.className = 'error';
-                status.textContent = '❌ Не удалось получить ID пользователя. Открой Mini App через бота.';
-                return;
-            }
+            status.className = 'error';
+            status.style.whiteSpace = 'pre-wrap';
+            status.style.fontSize = '11px';
+            status.style.textAlign = 'left';
+            status.textContent = debugInfo;
+            return;
+           }
 
             // Блокируем кнопку на время отправки
             saveBtn.disabled = true;
