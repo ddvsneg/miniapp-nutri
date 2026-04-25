@@ -35,6 +35,27 @@
             font-size: 16px;
             cursor: pointer;
         }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        #status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        #status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -42,32 +63,74 @@
     
     <input type="text" id="dish" placeholder="Название блюда">
     <input type="number" id="calories" placeholder="Калории">
-    <button onclick="saveEntry()">Сохранить в дневник</button>
+    <button id="saveBtn" onclick="saveEntry()">Сохранить в дневник</button>
+    <div id="status"></div>
 
     <script>
+        // ⚠️ ВСТАВЬ СЮДА СВОЙ API-КЛЮЧ SALEBOT
+        const SALEBOT_API_KEY = "ТВОЙ_API_КЛЮЧ_ЗДЕСЬ";
+
         // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        function saveEntry() {
+        async function saveEntry() {
             const dish = document.getElementById('dish').value;
             const calories = document.getElementById('calories').value;
+            const saveBtn = document.getElementById('saveBtn');
+            const status = document.getElementById('status');
 
             if (!dish || !calories) {
                 tg.showAlert('Заполни оба поля!');
                 return;
             }
 
-            // Формируем данные для отправки в Salebot
-            const data = {
-                action: 'add_diary_entry',
-                dish: dish,
-                calories: calories
-            };
+            // Получаем platform_id пользователя из Telegram
+            const platformId = tg.initDataUnsafe?.user?.id;
+            if (!platformId) {
+                status.className = 'error';
+                status.textContent = '❌ Не удалось получить ID пользователя';
+                return;
+            }
 
-            // Отправляем данные в бот и закрываем Mini App
-            tg.sendData(JSON.stringify(data));
+            // Блокируем кнопку на время отправки
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Сохраняю...';
+            status.style.display = 'none';
+
+            try {
+                // Отправляем callback в Salebot
+                const response = await fetch(
+                    `https://chatter.salebot.pro/api/${SALEBOT_API_KEY}/callback`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            client_id: platformId,
+                            message: 'diary_new_entry',
+                            dish: dish,
+                            calories: calories
+                        })
+                    }
+                );
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    status.className = 'success';
+                    status.textContent = '✅ Запись сохранена!';
+                    // Через 1.5 секунды закрываем Mini App
+                    setTimeout(() => tg.close(), 1500);
+                } else {
+                    throw new Error(result.message || 'Ошибка отправки');
+                }
+            } catch (error) {
+                status.className = 'error';
+                status.textContent = '❌ Ошибка: ' + error.message;
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Сохранить в дневник';
+            }
         }
     </script>
 </body>
